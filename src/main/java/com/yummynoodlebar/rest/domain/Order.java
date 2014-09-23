@@ -8,6 +8,9 @@ import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
+@XmlRootElement
 public class Order implements Serializable {
 
   private Date dateTimeOfSubmission;
