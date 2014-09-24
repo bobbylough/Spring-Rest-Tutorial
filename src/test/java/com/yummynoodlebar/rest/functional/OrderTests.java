@@ -1,33 +1,41 @@
 package com.yummynoodlebar.rest.functional;
 
-import com.yummynoodlebar.rest.controller.fixture.RestDataFixture;
-import com.yummynoodlebar.rest.domain.Order;
-
-import org.junit.Test;
-import org.springframework.http.*;
-import org.springframework.security.crypto.codec.Base64;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
+import static junit.framework.TestCase.fail;
 
 import java.util.Arrays;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.codec.Base64;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import com.yummynoodlebar.rest.controller.fixture.RestDataFixture;
+import com.yummynoodlebar.rest.domain.Order;
 
 public class OrderTests {
+
+	@Before
+	public void setup() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+				request));
+	}
 
 	@Test
 	public void thatOrdersCanBeAddedAndQueried() {
 
-		HttpEntity<String> requestEntity = new HttpEntity<String>(
-				RestDataFixture.standardOrderJSON(), getHeaders("letsnosh"
-						+ ":" + "noshing"));
-
-		RestTemplate template = new RestTemplate();
-		ResponseEntity<Order> entity = template.postForEntity(
-				"http://localhost:8080/aggregators/orders", requestEntity,
-				Order.class);
+		ResponseEntity<Order> entity = createOrder();
 
 		String path = entity.getHeaders().getLocation().getPath();
 
@@ -62,6 +70,32 @@ public class OrderTests {
 		}
 	}
 
+	@Test
+	public void thatOrdersHaveCorrectHateoasLinks() {
+
+		ResponseEntity<Order> entity = createOrder();
+
+		Order order = entity.getBody();
+
+		String orderBase = "/aggregators/orders/" + order.getKey();
+
+		assertEquals(entity.getHeaders().getLocation().toString(), order
+				.getLink("self").getHref());
+		assertTrue(order.getLink("Order Status").getHref()
+				.endsWith(orderBase + "/status"));
+	}
+
+	private ResponseEntity<Order> createOrder() {
+		HttpEntity<String> requestEntity = new HttpEntity<String>(
+				RestDataFixture.standardOrderJSON(), getHeaders("letsnosh"
+						+ ":" + "noshing"));
+
+		RestTemplate template = new RestTemplate();
+		return template.postForEntity(
+				"http://localhost:8080/aggregators/orders", requestEntity,
+				Order.class);
+	}
+
 	static HttpHeaders getHeaders(String auth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -73,5 +107,4 @@ public class OrderTests {
 
 		return headers;
 	}
-
 }
